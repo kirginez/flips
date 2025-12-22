@@ -45,7 +45,24 @@ cp .env.template .env
 - `ALGORITHM` - алгоритм шифрования (по умолчанию HS256)
 - `ACCESS_TOKEN_EXPIRE_HOURS` - время жизни токена в часах
 
-### 3. Сборка фронтенда
+### 2.1. Настройка пользователей
+
+Убедитесь, что файл `backend/users.json` существует и содержит пользователей. Пример:
+
+```json
+[
+    {
+        "username": "admin",
+        "hashed_password": "...",
+        "bonus": 1.05,
+        "punishment": 0.8,
+        "new_limit": 20,
+        "due_limit": 200
+    }
+]
+```
+
+### 3. Сборка фронтенда (обязательно перед запуском)
 
 ```bash
 cd frontend
@@ -54,6 +71,8 @@ npm run build
 
 ### 4. Запуск
 
+Запустите backend из директории `backend`:
+
 ```bash
 cd backend
 uv run uvicorn main:app --host 0.0.0.0 --port 8080
@@ -61,27 +80,41 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8080
 
 Приложение будет доступно по адресу: http://localhost:8080
 
+**Важно:** Фронтенд должен быть собран перед запуском backend, иначе будет показано только API без интерфейса.
+
 ## Разработка
 
-Для разработки с hot reload:
+Для разработки backend запустите с флагом `--reload`:
 
 ```bash
-# Terminal 1 - Backend
 cd backend
 uv run uvicorn main:app --reload --host 127.0.0.1 --port 8080
-
-# Terminal 2 - Frontend dev server
-cd frontend
-npm run dev
-# Откройте http://localhost:5173
-# При логине укажите Server URL: http://127.0.0.1:8080
 ```
+
+При изменении фронтенда пересоберите его:
+
+```bash
+cd frontend
+npm run build
+```
+
+Backend автоматически подхватит изменения после перезапуска.
 
 ## Деплой
 
 1. Соберите фронтенд: `cd frontend && npm run build`
-2. Настройте переменные окружения на хостинге
-3. Запустите backend: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+2. Настройте переменные окружения на хостинге (создайте `.env` файл в корне проекта)
+3. Убедитесь, что `backend/users.json` существует с пользователями
+4. Запустите backend из директории `backend`:
+   ```bash
+   cd backend
+   uv run uvicorn main:app --host 0.0.0.0 --port $PORT
+   ```
+   Или если используете системный Python:
+   ```bash
+   cd backend
+   uvicorn main:app --host 0.0.0.0 --port $PORT
+   ```
 
 Backend автоматически раздаёт собранный фронтенд из `frontend/dist/`.
 
