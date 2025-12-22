@@ -32,8 +32,8 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$BACKEND_DIR
-Environment="PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=$UV_PATH run uvicorn main:app --host 0.0.0.0 --port 8080
+Environment="PATH=/root/.local/bin:/root/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+ExecStart=/bin/bash -c '$UV_PATH run uvicorn main:app --host 0.0.0.0 --port 8080'
 Restart=always
 RestartSec=10
 StandardOutput=journal
