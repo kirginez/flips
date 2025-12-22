@@ -102,19 +102,97 @@ Backend автоматически подхватит изменения пос�
 
 ## Деплой
 
+### Запуск через systemd (рекомендуется для продакшена)
+
 1. Соберите фронтенд: `cd frontend && npm run build`
 2. Настройте переменные окружения на хостинге (создайте `.env` файл в корне проекта)
 3. Убедитесь, что `backend/users.json` существует с пользователями
-4. Запустите backend из директории `backend`:
+4. Установите systemd сервис:
+
+   **Простой способ (через скрипт):**
    ```bash
-   cd backend
-   uv run uvicorn main:app --host 0.0.0.0 --port $PORT
+   ./manage-service.sh install
+   sudo systemctl start flips.service
    ```
-   Или если используете системный Python:
+
+   **Или вручную:**
    ```bash
-   cd backend
-   uvicorn main:app --host 0.0.0.0 --port $PORT
+   # Скопируйте файл сервиса в systemd
+   sudo cp flips.service /etc/systemd/system/
+
+   # Обновите пути в файле, если они отличаются от ваших
+   sudo nano /etc/systemd/system/flips.service
+
+   # Перезагрузите systemd
+   sudo systemctl daemon-reload
+
+   # Включите автозапуск при загрузке системы
+   sudo systemctl enable flips.service
+
+   # Запустите сервис
+   sudo systemctl start flips.service
+
+   # Проверьте статус
+   sudo systemctl status flips.service
    ```
+
+5. Полезные команды для управления сервисом:
+
+   **Через скрипт (удобнее):**
+   ```bash
+   ./manage-service.sh start      # Запустить
+   ./manage-service.sh stop       # Остановить
+   ./manage-service.sh restart    # Перезапустить
+   ./manage-service.sh status     # Статус
+   ./manage-service.sh logs       # Логи
+   ./manage-service.sh uninstall  # Удалить
+   ```
+
+   **Или напрямую через systemctl:**
+   ```bash
+   # Остановить
+   sudo systemctl stop flips.service
+
+   # Перезапустить
+   sudo systemctl restart flips.service
+
+   # Посмотреть логи
+   sudo journalctl -u flips.service -f
+
+   # Отключить автозапуск
+   sudo systemctl disable flips.service
+   ```
+
+### Ручной запуск (для тестирования)
+
+Запустите backend из директории `backend`:
+```bash
+cd backend
+uv run uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+Или если используете системный Python:
+```bash
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+### Альтернативные способы запуска в фоне
+
+**Через screen:**
+```bash
+screen -S flips
+cd backend
+uv run uvicorn main:app --host 0.0.0.0 --port 8080
+# Нажмите Ctrl+A, затем D для отсоединения
+# Вернуться: screen -r flips
+```
+
+**Через nohup:**
+```bash
+cd backend
+nohup uv run uvicorn main:app --host 0.0.0.0 --port 8080 > ../flips.log 2>&1 &
+```
 
 Backend автоматически раздаёт собранный фронтенд из `frontend/dist/`.
 
