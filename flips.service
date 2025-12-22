@@ -4,11 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-# Уберите комментарий и укажите правильного пользователя, если нужно запускать не от root
-# User=your_username
-WorkingDirectory=/root/flips/backend
-# Используем скрипт-обертку для автоматического поиска uv
-ExecStart=/root/flips/backend/start.sh
+# Этот файл будет автоматически создан скриптом setup-service.sh
+# с правильными путями для вашей системы
+WorkingDirectory=/path/to/flips/backend
+ExecStart=/path/to/flips/backend/start.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal

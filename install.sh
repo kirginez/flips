@@ -48,7 +48,7 @@ if [ -d "$FRONTEND_DIR" ] && [ -f "$FRONTEND_DIR/package.json" ]; then
     fi
     echo "   ✓ Frontend зависимости установлены"
     echo ""
-    
+
     # 3. Сборка frontend
     echo "3. Сборка frontend..."
     npm run build
