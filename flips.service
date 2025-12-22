@@ -4,10 +4,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=kirginez
-WorkingDirectory=/home/kirginez/My Scripts/flips/backend
-Environment="PATH=/home/kirginez/.local/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/home/kirginez/.local/bin/uv run uvicorn main:app --host 0.0.0.0 --port 8080
+# Уберите комментарий и укажите правильного пользователя, если нужно запускать не от root
+# User=your_username
+WorkingDirectory=/root/flips/backend
+Environment="PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
+# Если uv установлен в другом месте, найдите его: which uv
+ExecStart=/usr/local/bin/uv run uvicorn main:app --host 0.0.0.0 --port 8080
 Restart=always
 RestartSec=10
 StandardOutput=journal
