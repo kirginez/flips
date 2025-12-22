@@ -3,19 +3,37 @@
 
 cd "$(dirname "$0")"
 
-# Пробуем найти uv в разных местах
-if command -v uv &> /dev/null; then
-    UV_CMD="uv"
-elif [ -f "$HOME/.local/bin/uv" ]; then
-    UV_CMD="$HOME/.local/bin/uv"
-elif [ -f "$HOME/.cargo/bin/uv" ]; then
-    UV_CMD="$HOME/.cargo/bin/uv"
-elif [ -f "/usr/local/bin/uv" ]; then
-    UV_CMD="/usr/local/bin/uv"
+# Определяем путь к виртуальному окружению
+VENV_DIR=".venv"
+
+# Если виртуальное окружение не существует, создаем его
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Создание виртуального окружения..." >&2
+    python3 -m venv "$VENV_DIR"
+    if [ $? -ne 0 ]; then
+        echo "ОШИБКА: Не удалось создать виртуальное окружение!" >&2
+        exit 1
+    fi
+
+    # Активируем и устанавливаем зависимости
+    source "$VENV_DIR/bin/activate"
+    pip install --upgrade pip
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+    else
+        echo "ОШИБКА: requirements.txt не найден!" >&2
+        exit 1
+    fi
 else
-    echo "ОШИБКА: uv не найден!" >&2
+    # Активируем существующее виртуальное окружение
+    source "$VENV_DIR/bin/activate"
+fi
+
+# Проверяем наличие uvicorn
+if ! command -v uvicorn &> /dev/null; then
+    echo "ОШИБКА: uvicorn не найден! Установите зависимости: pip install -r requirements.txt" >&2
     exit 1
 fi
 
 # Запускаем приложение
-exec "$UV_CMD" run uvicorn main:app --host 0.0.0.0 --port 8080
+exec uvicorn main:app --host 0.0.0.0 --port 8080
