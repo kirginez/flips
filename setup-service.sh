@@ -22,6 +22,36 @@ if [ -z "$UV_PATH" ]; then
 fi
 echo "Путь к uv: $UV_PATH"
 
+# Создаём скрипт запуска, если его нет
+START_SCRIPT="$BACKEND_DIR/start.sh"
+if [ ! -f "$START_SCRIPT" ]; then
+    echo "Создаю скрипт запуска $START_SCRIPT"
+    cat > "$START_SCRIPT" << 'STARTEOF'
+#!/bin/bash
+# Скрипт запуска Flips приложения
+
+cd "$(dirname "$0")"
+
+# Пробуем найти uv в разных местах
+if command -v uv &> /dev/null; then
+    UV_CMD="uv"
+elif [ -f "$HOME/.local/bin/uv" ]; then
+    UV_CMD="$HOME/.local/bin/uv"
+elif [ -f "$HOME/.cargo/bin/uv" ]; then
+    UV_CMD="$HOME/.cargo/bin/uv"
+elif [ -f "/usr/local/bin/uv" ]; then
+    UV_CMD="/usr/local/bin/uv"
+else
+    echo "ОШИБКА: uv не найден!" >&2
+    exit 1
+fi
+
+# Запускаем приложение
+exec "$UV_CMD" run uvicorn main:app --host 0.0.0.0 --port 8080
+STARTEOF
+    chmod +x "$START_SCRIPT"
+fi
+
 # Создаём временный файл сервиса
 SERVICE_FILE="/tmp/flips.service"
 cat > "$SERVICE_FILE" << EOF
@@ -32,8 +62,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$BACKEND_DIR
-Environment="PATH=/root/.local/bin:/root/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
-ExecStart=/bin/bash -c '$UV_PATH run uvicorn main:app --host 0.0.0.0 --port 8080'
+ExecStart=$START_SCRIPT
 Restart=always
 RestartSec=10
 StandardOutput=journal

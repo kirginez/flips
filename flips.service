@@ -7,10 +7,8 @@ Type=simple
 # Уберите комментарий и укажите правильного пользователя, если нужно запускать не от root
 # User=your_username
 WorkingDirectory=/root/flips/backend
-# Используем shell для поиска uv в PATH
-Environment="PATH=/root/.local/bin:/root/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
-# Замените путь на результат команды: which uv
-ExecStart=/bin/bash -c 'uv run uvicorn main:app --host 0.0.0.0 --port 8080'
+# Используем скрипт-обертку для автоматического поиска uv
+ExecStart=/root/flips/backend/start.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal
