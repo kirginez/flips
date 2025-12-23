@@ -26,6 +26,7 @@ export const StudyPage = () => {
   const [showIncreaseLimitsModal, setShowIncreaseLimitsModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Загрузка следующей карточки
   const loadNextCard = useCallback(async () => {
     setLoading(true);
     try {
@@ -46,48 +47,92 @@ export const StudyPage = () => {
     } finally {
       setLoading(false);
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   }, []);
 
+  // Отправка ответа на сервер
   const sendAnswer = useCallback(async (isCorrect: boolean, cardId: string) => {
+    console.log('Sending answer:', { answer: isCorrect, cardId });
     try {
       await studyApi.answerCard({ card_id: cardId, answer: isCorrect });
     } catch (error) {
       console.error('Failed to send answer:', error);
+      throw error;
     }
   }, []);
 
-  const handleContinue = useCallback(async () => {
-    // Используем ref для синхронной проверки и установки флага
-    if (!card || isSubmittingRef.current) {
-      console.log('handleContinue blocked:', { card: !!card, isSubmitting: isSubmittingRef.current });
+  // Обработка ответа пользователя
+  const handleAnswer = () => {
+    if (!card) return;
+
+    const trimmedInput = input.trim();
+
+    // Обработка пустого поля
+    if (!trimmedInput) {
+      if (stage === 'definition') {
+        setShowTranslation(true);
+        setStage('with_translation');
+      } else if (stage === 'with_translation') {
+        setShowTranslation(true);
+        setStage('must_type');
+      }
       return;
     }
 
-    // Устанавливаем флаг синхронно через ref
+    // Проверка правильности ответа
+    const correct = isWordCorrect(trimmedInput, card.word);
+    setUserAnswer(trimmedInput);
+
+    if (correct) {
+      setShowTranslation(true);
+      // Если дошли до стадии must_type, значит пользователь уже пропустил ответ дважды
+      // Поэтому даже правильный ответ на этой стадии считается неправильным
+      if (stage === 'must_type') {
+        setStage('final');
+        setWasCorrect(false);
+      } else {
+        setStage('final');
+        setWasCorrect(true);
+      }
+    } else {
+      setShowTranslation(true);
+      setStage('incorrect');
+      setWasCorrect(false);
+    }
+
+    setInput('');
+  };
+
+  // Продолжить - отправить ответ и загрузить следующую карточку
+  const handleContinue = useCallback(async () => {
+    // Защита от двойного вызова через ref
+    if (!card || isSubmittingRef.current) {
+      return;
+    }
+
+    // Устанавливаем флаг синхронно
     isSubmittingRef.current = true;
     setIsSubmitting(true);
 
-    console.log('handleContinue called:', { cardId: card.id, wasCorrect, wasCorrectType: typeof wasCorrect });
-
-    // Сохраняем ID текущей карточки и значение wasCorrect до начала асинхронных операций
+    // Сохраняем значения до начала асинхронных операций
     const currentCardId = card.id;
     const currentWasCorrect = wasCorrect;
 
-    // Сразу очищаем карточку и показываем загрузку, чтобы пользователь видел переход
+    // Очищаем карточку для показа загрузки
     setCard(null);
     setLoading(true);
     setStage('definition');
 
     try {
-      console.log('Sending answer:', { answer: currentWasCorrect, cardId: currentCardId });
+      // Отправляем ответ
       await sendAnswer(currentWasCorrect, currentCardId);
 
-      // Небольшая задержка, чтобы дать серверу время обновить расписание
+      // Небольшая задержка для обновления расписания на сервере
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Загружаем следующую карточку
-      // Если сервер вернет ту же карточку, пропускаем её и загружаем еще раз
+      // Если вернулась та же карточка, пробуем еще раз
       let attempts = 0;
       let nextCard = null;
       while (attempts < 5) {
@@ -95,7 +140,6 @@ export const StudyPage = () => {
         if (!nextCard || nextCard.id !== currentCardId) {
           break;
         }
-        // Если вернулась та же карточка, ждем немного и пробуем снова
         await new Promise(resolve => setTimeout(resolve, 200));
         attempts++;
       }
@@ -120,70 +164,13 @@ export const StudyPage = () => {
     }
   }, [card, wasCorrect, sendAnswer]);
 
-  useEffect(() => {
-    loadNextCard();
-  }, [loadNextCard]);
-
-  useEffect(() => {
-    if (stage === 'final' && continueButtonRef.current) {
-      continueButtonRef.current.focus();
-    } else if (inputRef.current && stage !== 'final') {
-      inputRef.current.focus();
-    }
-  }, [stage, card]);
-
-
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    handleAnswer();
-  };
-
-
-  const handleAnswer = () => {
-    if (!card) return;
-
-    const trimmedInput = input.trim();
-
-    if (!trimmedInput) {
-      if (stage === 'definition') {
-        setShowTranslation(true);
-        setStage('with_translation');
-      } else if (stage === 'with_translation') {
-        setShowTranslation(true);
-        setStage('must_type');
-      }
-      return;
-    }
-
-    const correct = isWordCorrect(trimmedInput, card.word);
-    setUserAnswer(trimmedInput);
-
-    if (correct) {
-      setShowTranslation(true);
-      // Если дошли до стадии must_type, значит пользователь уже пропустил ответ дважды
-      // Поэтому даже правильный ответ на этой стадии считается неправильным
-      if (stage === 'must_type') {
-        setStage('final');
-        setWasCorrect(false);
-      } else {
-        setStage('final');
-        setWasCorrect(true);
-      }
-    } else {
-      setShowTranslation(true);
-      setStage('incorrect');
-      setWasCorrect(false); // Явно устанавливаем false для неправильного ответа
-    }
-
-    setInput('');
-  };
-
-
-  const handleManualOverride = async (overrideCorrect: boolean) => {
+  // Ручное переопределение правильности ответа
+  const handleManualOverride = useCallback(async (overrideCorrect: boolean) => {
     if (!card || isSubmittingRef.current) return;
+
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+
     try {
       await sendAnswer(overrideCorrect, card.id);
       await loadNextCard();
@@ -191,12 +178,15 @@ export const StudyPage = () => {
       setIsSubmitting(false);
       isSubmittingRef.current = false;
     }
-  };
+  }, [card, sendAnswer, loadNextCard]);
 
-  const handleDelete = async () => {
+  // Удаление карточки
+  const handleDelete = useCallback(async () => {
     if (!card || isSubmittingRef.current) return;
+
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+
     try {
       await studyApi.deleteCard(card.id);
       await loadNextCard();
@@ -206,10 +196,30 @@ export const StudyPage = () => {
       setIsSubmitting(false);
       isSubmittingRef.current = false;
     }
+  }, [card, loadNextCard]);
+
+  // Обработка отправки формы
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    handleAnswer();
   };
 
+  // Загрузка первой карточки при монтировании
+  useEffect(() => {
+    loadNextCard();
+  }, [loadNextCard]);
 
-  if (loading) {
+  // Автофокус на инпут или кнопку Continue
+  useEffect(() => {
+    if (stage === 'final' && continueButtonRef.current) {
+      continueButtonRef.current.focus();
+    } else if (inputRef.current && stage !== 'final') {
+      inputRef.current.focus();
+    }
+  }, [stage, card]);
+
+  // Состояние загрузки
+  if (loading && !card) {
     return (
       <CentralContainer>
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -219,6 +229,7 @@ export const StudyPage = () => {
     );
   }
 
+  // Нет карточек
   if (!card) {
     return (
       <CentralContainer>
@@ -262,24 +273,25 @@ export const StudyPage = () => {
             ← Menu
           </button>
 
+          {/* Мета информация */}
           {card.meta && <div className="text-gray-500 italic leading-tight mb-1">{card.meta}</div>}
+
+          {/* Определение */}
           <div className="leading-tight mb-1">{card.definition || 'No definition'}</div>
 
+          {/* Перевод */}
           {showTranslation && (
             <div className="leading-tight mb-1">{card.translation}</div>
           )}
 
+          {/* Неправильный ответ - показываем сравнение */}
           {stage === 'incorrect' && (
             <>
               <div className="leading-tight mb-1 font-mono">
                 {compareWords(userAnswer, card.word).map((char, idx) => (
                   <span
                     key={idx}
-                    className={
-                      char.isCorrect
-                        ? 'bg-green-200'
-                        : 'bg-red-200'
-                    }
+                    className={char.isCorrect ? 'bg-green-200' : 'bg-red-200'}
                   >
                     {char.char}
                   </span>
@@ -315,6 +327,7 @@ export const StudyPage = () => {
             </>
           )}
 
+          {/* Стадия must_type - показываем слово */}
           {stage === 'must_type' && (
             <>
               <div className="font-bold leading-tight mb-1">{card.word}</div>
@@ -330,6 +343,7 @@ export const StudyPage = () => {
             </>
           )}
 
+          {/* Финальная стадия */}
           {stage === 'final' && (
             <>
               <div className="font-bold leading-tight mb-1">
@@ -347,6 +361,7 @@ export const StudyPage = () => {
             </>
           )}
 
+          {/* Форма ввода (не на финальной стадии) */}
           {stage !== 'final' && (
             <>
               <form onSubmit={handleSubmit} className="mt-2">
@@ -355,12 +370,6 @@ export const StudyPage = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' || e.keyCode === 13) {
-                      e.preventDefault();
-                      handleAnswer();
-                    }
-                  }}
                   placeholder="Type word..."
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -368,9 +377,11 @@ export const StudyPage = () => {
                   enterKeyHint="go"
                   inputMode="text"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isSubmitting}
                 />
               </form>
 
+              {/* Кнопка "Actually correct" при неправильном ответе */}
               {stage === 'incorrect' && (
                 <button
                   onClick={() => handleManualOverride(true)}
@@ -383,6 +394,7 @@ export const StudyPage = () => {
             </>
           )}
 
+          {/* Кнопки на финальной стадии */}
           {stage === 'final' && (
             <div className="mt-2 space-y-1">
               <button
@@ -399,14 +411,15 @@ export const StudyPage = () => {
 
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="w-full px-4 py-2 text-sm text-red-600 hover:text-red-800 underline"
+                disabled={isSubmitting}
+                className="w-full px-4 py-2 text-sm text-red-600 hover:text-red-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Delete card
               </button>
             </div>
           )}
 
-          {/* Confirmation dialog */}
+          {/* Диалог подтверждения удаления */}
           {showDeleteConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
@@ -422,7 +435,8 @@ export const StudyPage = () => {
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     No
                   </button>
