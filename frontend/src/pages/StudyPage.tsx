@@ -13,7 +13,6 @@ export const StudyPage = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const isSubmittingRef = useRef(false);
   const submittingCardIdRef = useRef<string | null>(null);
 
@@ -67,6 +66,13 @@ export const StudyPage = () => {
       throw error;
     }
   }, []);
+
+  // Обработка отправки формы
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleAnswer();
+  };
 
   // Обработка ответа пользователя
   const handleAnswer = () => {
@@ -399,7 +405,7 @@ export const StudyPage = () => {
           {/* Форма ввода (не на финальной стадии) */}
           {stage !== 'final' && (
             <>
-              <div className="mt-2">
+              <form onSubmit={handleSubmit} className="mt-2">
                 <input
                   ref={inputRef}
                   type="text"
@@ -409,26 +415,12 @@ export const StudyPage = () => {
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck="false"
+                  enterKeyHint="go"
                   inputMode="text"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isSubmitting}
                 />
-                <button
-                  ref={submitButtonRef}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!isSubmitting && !isSubmittingRef.current) {
-                      handleAnswer();
-                    }
-                  }}
-                  disabled={isSubmitting}
-                  className="w-full mt-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Submit
-                </button>
-              </div>
+              </form>
 
               {/* Кнопка "Actually correct" при неправильном ответе */}
               {stage === 'incorrect' && (
@@ -450,17 +442,8 @@ export const StudyPage = () => {
                 ref={continueButtonRef}
                 type="button"
                 onClick={(e) => {
-                  const timestamp = new Date().toISOString();
-                  console.log(`🖱️ [${timestamp}] Button clicked`);
-                  console.log('Event:', e);
-                  console.log('Event type:', e.type);
-                  console.log('isSubmitting:', isSubmitting);
-                  console.log('isSubmittingRef.current:', isSubmittingRef.current);
-
                   e.preventDefault();
                   e.stopPropagation();
-
-                  console.log('Calling handleContinue...');
                   handleContinue();
                 }}
                 disabled={isSubmitting}
