@@ -42,11 +42,12 @@ class ScheduleRepo:
         return ScheduleAmount(new=new, cram=cram, due=due)
 
     def get_limits(self, user: User) -> Limits:
-        stmt = select(Limits).where(Limits.username == user.username, Limits.created_at == func.current_date())
+        stmt = select(Limits).where(Limits.username == user.username, func.date(Limits.created_at) == func.date('now'))
         if not (result := self.db.exec(stmt).first()):
             limits = Limits(username=user.username, new_limit=user.new_limit, due_limit=user.due_limit)
             self.db.add(limits)
             self.db.commit()
+            self.db.refresh(limits)
             return limits
         return result
 
