@@ -14,6 +14,7 @@ export const StudyPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const isSubmittingRef = useRef(false);
+  const submittingCardIdRef = useRef<string | null>(null);
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,7 @@ export const StudyPage = () => {
       setLoading(false);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
+      submittingCardIdRef.current = null;
     }
   }, []);
 
@@ -106,18 +108,28 @@ export const StudyPage = () => {
 
   // Продолжить - отправить ответ и загрузить следующую карточку
   const handleContinue = useCallback(async () => {
-    // Защита от двойного вызова через ref
+    // Строгая защита от двойного вызова через ref
     if (!card || isSubmittingRef.current) {
+      console.log('handleContinue: blocked - card:', !!card, 'isSubmitting:', isSubmittingRef.current);
       return;
     }
 
-    // Устанавливаем флаг синхронно
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
+    // Проверяем, не отправляется ли уже запрос для этой карточки
+    if (submittingCardIdRef.current === card.id) {
+      console.log('handleContinue: blocked - already submitting for card:', card.id);
+      return;
+    }
 
-    // Сохраняем значения до начала асинхронных операций
+    console.log('handleContinue: starting for card:', card.id);
+
+    // Сохраняем ID карточки ДО установки флагов
     const currentCardId = card.id;
     const currentWasCorrect = wasCorrect;
+
+    // Устанавливаем флаги синхронно ПЕРЕД любыми другими операциями
+    isSubmittingRef.current = true;
+    submittingCardIdRef.current = currentCardId;
+    setIsSubmitting(true);
 
     // Очищаем карточку для показа загрузки
     setCard(null);
@@ -126,6 +138,7 @@ export const StudyPage = () => {
 
     try {
       // Отправляем ответ
+      console.log('handleContinue: sending answer for card:', currentCardId);
       await sendAnswer(currentWasCorrect, currentCardId);
 
       // Небольшая задержка для обновления расписания на сервере
@@ -136,15 +149,18 @@ export const StudyPage = () => {
       let attempts = 0;
       let nextCard = null;
       while (attempts < 5) {
+        console.log('handleContinue: loading next card, attempt:', attempts + 1);
         nextCard = await studyApi.getNextCard();
         if (!nextCard || nextCard.id !== currentCardId) {
           break;
         }
+        console.log('handleContinue: same card returned, retrying...');
         await new Promise(resolve => setTimeout(resolve, 200));
         attempts++;
       }
 
       if (nextCard && nextCard.id !== currentCardId) {
+        console.log('handleContinue: loaded new card:', nextCard.id);
         setCard(nextCard);
         setStage('definition');
         setInput('');
@@ -153,14 +169,17 @@ export const StudyPage = () => {
         setWasCorrect(false);
         setShowDeleteConfirm(false);
       } else {
+        console.log('handleContinue: no more cards');
         setCard(null);
       }
     } catch (error) {
       console.error('Failed to continue:', error);
     } finally {
+      console.log('handleContinue: finished');
       setLoading(false);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
+      submittingCardIdRef.current = null;
     }
   }, [card, wasCorrect, sendAnswer]);
 
@@ -399,9 +418,19 @@ export const StudyPage = () => {
             <div className="mt-2 space-y-1">
               <button
                 ref={continueButtonRef}
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleContinue();
+                }}
+                onKeyDown={(e) => {
+                  // Предотвращаем стандартное поведение Enter на кнопке
+                  // onClick уже обработает клик/Enter
+                  if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
                 }}
                 disabled={isSubmitting}
                 className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
