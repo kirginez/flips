@@ -31,10 +31,13 @@ fi
 # Переходим в директорию frontend
 cd "$FRONTEND_DIR"
 
+# Увеличиваем память для Node.js
+export NODE_OPTIONS="--max-old-space-size=4096"
+
 # Проверяем наличие node_modules
 if [ ! -d "node_modules" ]; then
     echo "1. Установка зависимостей frontend..."
-    npm install
+    npm install --prefer-offline --no-audit --progress=false
     echo "   ✓ Зависимости установлены"
     echo ""
 else

@@ -43,15 +43,32 @@ echo ""
 if [ -d "$FRONTEND_DIR" ] && [ -f "$FRONTEND_DIR/package.json" ]; then
     echo "2. Установка зависимостей frontend..."
     cd "$FRONTEND_DIR"
+
+    # Увеличиваем память для Node.js и устанавливаем зависимости
+    export NODE_OPTIONS="--max-old-space-size=4096"
+
     if [ ! -d "node_modules" ]; then
-        npm install --silent
+        echo "   Установка npm пакетов (это может занять некоторое время)..."
+        npm install --prefer-offline --no-audit --progress=false || {
+            echo "   Предупреждение: npm install завершился с ошибкой, пробуем с очисткой кэша..."
+            rm -rf node_modules package-lock.json
+            npm cache clean --force
+            npm install --prefer-offline --no-audit --progress=false
+        }
+    else
+        echo "   node_modules уже существует, пропускаем установку..."
     fi
     echo "   ✓ Frontend зависимости установлены"
     echo ""
 
     # 3. Сборка frontend
     echo "3. Сборка frontend..."
-    npm run build
+    # Увеличиваем память для сборки
+    export NODE_OPTIONS="--max-old-space-size=4096"
+    npm run build || {
+        echo "   Ошибка сборки, пробуем с увеличенной памятью..."
+        NODE_OPTIONS="--max-old-space-size=6144" npm run build
+    }
     echo "   ✓ Frontend собран"
     echo ""
 else
