@@ -5,7 +5,7 @@
 ## Технологии
 
 **Backend:**
-- Python 3.13+
+- Python 3.11+
 - FastAPI
 - SQLModel (SQLite)
 - JWT аутентификация
@@ -20,23 +20,14 @@
 
 ## Быстрый старт
 
-### 1. Установка зависимостей
+### 1. Установка зависимостей backend
 
 ```bash
-# Backend (вариант 1: через uv)
-cd backend
-uv sync
-
-# Backend (вариант 2: через pip и виртуальное окружение)
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate  # На Windows: .venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
-
-# Frontend
-cd ../frontend
-npm install
 ```
 
 ### 2. Настройка переменных окружения
@@ -52,7 +43,7 @@ cp .env.template .env
 - `ALGORITHM` - алгоритм шифрования (по умолчанию HS256)
 - `ACCESS_TOKEN_EXPIRE_HOURS` - время жизни токена в часах
 
-### 2.1. Настройка пользователей
+### 3. Настройка пользователей
 
 Убедитесь, что файл `backend/users.json` существует и содержит пользователей. Пример:
 
@@ -69,200 +60,110 @@ cp .env.template .env
 ]
 ```
 
-### 3. Сборка фронтенда (обязательно перед запуском)
-
-```bash
-cd frontend
-npm run build
-```
-
-### 4. Запуск
-
-Запустите backend из директории `backend`:
+Для генерации хеша пароля используйте `backend/hash_password.py`:
 
 ```bash
 cd backend
-uv run uvicorn main:app --host 0.0.0.0 --port 8080
+source .venv/bin/activate
+python hash_password.py
+```
+
+### 4. Сборка фронтенда (локально, перед коммитом)
+
+```bash
+cd frontend
+npm install
+npm run build
+git add frontend/dist
+git commit -m "Build frontend"
+git push
+```
+
+**Важно:** Frontend собирается локально и `dist/` коммитится в git. На сервере сборка не требуется.
+
+### 5. Запуск
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
 Приложение будет доступно по адресу: http://localhost:8080
 
-**Важно:** Фронтенд должен быть собран перед запуском backend, иначе будет показано только API без интерфейса.
+## Деплой на сервер
 
-## Разработка
-
-Для разработки backend запустите с флагом `--reload`:
+### 1. Клонирование и развёртывание
 
 ```bash
-cd backend
-uv run uvicorn main:app --reload --host 127.0.0.1 --port 8080
-```
+# Клонируем проект
+git clone <your-repo-url> flips
+cd flips
 
-При изменении фронтенда пересоберите его:
-
-```bash
-cd frontend
-npm run build
-```
-
-Backend автоматически подхватит изменения после перезапуска.
-
-## Деплой
-
-### Подготовка к деплою (локально)
-
-Перед отправкой в git и на сервер нужно собрать фронтенд. Есть несколько способов:
-
-**1. Автоматическая сборка через скрипт:**
-```bash
-./build-and-prepare.sh
-```
-Этот скрипт:
-- ✅ Установит зависимости frontend (если нужно)
-- ✅ Соберёт фронтенд
-- ✅ Покажет информацию о собранных файлах
-
-**2. Автоматический деплой (сборка + коммит + push):**
-```bash
+# Развёртываем
 ./deploy.sh
 ```
-Этот скрипт:
-- ✅ Соберёт фронтенд
-- ✅ Проверит статус git
-- ✅ Закоммитит изменения (собранный dist)
-- ✅ Отправит на сервер
 
-**3. Автоматическая сборка через git hook:**
-При коммите изменений во frontend автоматически запустится сборка и собранные файлы будут добавлены в коммит.
+Скрипт `deploy.sh` автоматически:
+- ✅ Установит зависимости backend
+- ✅ Проверит наличие собранного frontend (dist)
 
-**Важно:** Собранный `frontend/dist/` теперь коммитится в репозиторий, чтобы на сервере не требовалась сборка.
+### 2. Настройка systemd сервиса (опционально)
 
-### Быстрая установка на сервер (полностью автоматическая)
-
-```bash
-# 1. Скопируйте проект на сервер
-
-# 2. Настройте переменные окружения (создайте .env в корне проекта)
-cp .env.template .env
-nano .env  # Отредактируйте по необходимости
-
-# 3. Убедитесь, что backend/users.json существует с пользователями
-
-# 4. Запустите автоматическую установку (делает всё сам)
-./install.sh
-```
-
-Скрипт `install.sh` автоматически:
-- ✅ Установит зависимости backend (создаст venv, установит пакеты)
-- ✅ Установит зависимости frontend (npm install)
-- ✅ Соберёт frontend (npm run build)
-- ✅ Настроит и запустит systemd сервис
-
-### Запуск через systemd (рекомендуется для продакшена)
-
-**Если хотите настроить только systemd сервис (после установки зависимостей):**
 ```bash
 ./setup-service.sh
 ```
 
-**Или вручную:**
+Или вручную:
 
-   **Или вручную через manage-service.sh:**
-   ```bash
-   # Сначала отредактируйте flips.service, указав правильные пути
-   nano flips.service
-   # Затем установите
-   ./manage-service.sh install
-   sudo systemctl start flips.service
-   ```
-
-   **Или полностью вручную:**
-   ```bash
-   # Скопируйте файл сервиса в systemd
-   sudo cp flips.service /etc/systemd/system/
-
-   # Обновите пути в файле, если они отличаются от ваших
-   sudo nano /etc/systemd/system/flips.service
-
-   # Перезагрузите systemd
-   sudo systemctl daemon-reload
-
-   # Включите автозапуск при загрузке системы
-   sudo systemctl enable flips.service
-
-   # Запустите сервис
-   sudo systemctl start flips.service
-
-   # Проверьте статус
-   sudo systemctl status flips.service
-   ```
-
-5. Полезные команды для управления сервисом:
-
-   **Через скрипт (удобнее):**
-   ```bash
-   ./manage-service.sh start      # Запустить
-   ./manage-service.sh stop       # Остановить
-   ./manage-service.sh restart    # Перезапустить
-   ./manage-service.sh status     # Статус
-   ./manage-service.sh logs       # Логи
-   ./manage-service.sh uninstall  # Удалить
-   ```
-
-   **Или напрямую через systemctl:**
-   ```bash
-   # Остановить
-   sudo systemctl stop flips.service
-
-   # Перезапустить
-   sudo systemctl restart flips.service
-
-   # Посмотреть логи
-   sudo journalctl -u flips.service -f
-
-   # Отключить автозапуск
-   sudo systemctl disable flips.service
-   ```
-
-### Ручной запуск (для тестирования)
-
-**С виртуальным окружением:**
 ```bash
-cd backend
-source .venv/bin/activate  # На Windows: .venv\Scripts\activate
-uvicorn main:app --host 0.0.0.0 --port 8080
+# Скопируйте и отредактируйте flips.service
+sudo cp flips.service /etc/systemd/system/
+sudo nano /etc/systemd/system/flips.service  # Укажите правильные пути
+
+# Установите сервис
+sudo systemctl daemon-reload
+sudo systemctl enable flips.service
+sudo systemctl start flips.service
 ```
 
-**Или через скрипт (автоматически создаст/активирует venv):**
+### 3. Управление сервисом
+
 ```bash
-cd backend
-./start.sh
+sudo systemctl start flips.service    # Запустить
+sudo systemctl stop flips.service     # Остановить
+sudo systemctl restart flips.service # Перезапустить
+sudo systemctl status flips.service   # Статус
+sudo journalctl -u flips.service -f   # Логи
 ```
 
-**Если используете uv:**
+## Полная очистка
+
+Если нужно полностью переустановить:
+
 ```bash
-cd backend
-uv run uvicorn main:app --host 0.0.0.0 --port 8080
+./cleanup.sh
+# Подтвердите "yes"
+# Затем удалите директорию если нужно:
+cd .. && rm -rf flips
 ```
 
-### Альтернативные способы запуска в фоне
+## Разработка
 
-**Через screen:**
-```bash
-screen -S flips
-cd backend
-uv run uvicorn main:app --host 0.0.0.0 --port 8080
-# Нажмите Ctrl+A, затем D для отсоединения
-# Вернуться: screen -r flips
-```
+### Backend с автоперезагрузкой:
 
-**Через nohup:**
 ```bash
 cd backend
-nohup uv run uvicorn main:app --host 0.0.0.0 --port 8080 > ../flips.log 2>&1 &
+source .venv/bin/activate
+uvicorn main:app --reload --host 127.0.0.1 --port 8080
 ```
 
-Backend автоматически раздаёт собранный фронтенд из `frontend/dist/`.
+### Frontend в режиме разработки:
+
+```bash
+cd frontend
+npm run dev
+```
 
 ## Структура проекта
 
@@ -281,7 +182,7 @@ flips/
 │   │   ├── components/  # React компоненты
 │   │   ├── pages/    # Страницы приложения
 │   │   └── utils/    # Утилиты
-│   └── package.json
+│   └── dist/         # Собранный frontend (коммитится в git)
 ├── .env.template     # Шаблон переменных окружения
 └── README.md
 ```
@@ -296,7 +197,15 @@ flips/
 
 ## Требования
 
-- Python 3.13+
-- Node.js 18+
-- uv (менеджер пакетов Python)
-- npm или yarn
+- Python 3.11+
+- pip
+- Node.js 18+ (только для локальной сборки frontend)
+- npm (только для локальной сборки frontend)
+
+## Оптимизация для малой памяти
+
+Проект оптимизирован для работы на серверах с ограниченной памятью:
+- ✅ Минимальные зависимости backend
+- ✅ Frontend собирается локально, на сервере не требуется Node.js
+- ✅ Используется базовый uvicorn (без [standard])
+- ✅ Используется bcrypt вместо argon2 (легче)

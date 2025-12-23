@@ -2,22 +2,22 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import HTTPException
-from pwdlib import PasswordHash
-
 from app.core.config import settings
+from fastapi import HTTPException
+from passlib.context import CryptContext
 
 logger = logging.getLogger(__name__)
 
-password_hash = PasswordHash.recommended()
+# Используем bcrypt для хеширования паролей (легче чем argon2)
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 
 def hash_password(password: str) -> str:
-    return password_hash.hash(password)
+    return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return password_hash.verify(plain_password, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def create_access_token(username: str) -> str:

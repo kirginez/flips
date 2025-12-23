@@ -7,11 +7,14 @@ Type=simple
 # Пути будут автоматически заменены скриптом setup-service.sh
 WorkingDirectory=/path/to/flips/backend
 Environment="PATH=/path/to/flips/backend/.venv/bin"
-ExecStart=/path/to/flips/backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080
+# Оптимизация для малой памяти: 1 воркер, без стандартных расширений
+ExecStart=/path/to/flips/backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080 --workers 1 --limit-concurrency 100
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
+# Ограничение памяти (опционально, раскомментируйте если нужно)
+# MemoryMax=512M
 
 [Install]
 WantedBy=multi-user.target

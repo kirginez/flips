@@ -34,8 +34,8 @@ fi
 # Активируем и устанавливаем зависимости
 echo "   Установка Python пакетов..."
 source .venv/bin/activate
-pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
+pip install --upgrade pip --quiet --no-cache-dir
+pip install -r requirements.txt --quiet --no-cache-dir
 echo "   ✓ Backend зависимости установлены"
 echo ""
 
