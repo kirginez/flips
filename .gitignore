@@ -10,7 +10,9 @@ __pycache__/
 .Python
 build/
 develop-eggs/
+# dist/ - игнорируем все dist, кроме frontend/dist
 dist/
+!frontend/dist/
 downloads/
 eggs/
 .eggs/
@@ -51,8 +53,7 @@ lerna-debug.log*
 # User data
 backend/users.json
 
-# Build outputs (dist теперь коммитится для деплоя)
-# frontend/dist/  # Раскомментируйте, если не хотите коммитить dist
+# Build outputs
 frontend/dist-ssr/
 
 # Logs
