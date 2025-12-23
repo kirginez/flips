@@ -13,6 +13,7 @@ export const StudyPage = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,18 +58,21 @@ export const StudyPage = () => {
   }, []);
 
   const handleContinue = useCallback(async () => {
-    if (!card || isSubmitting) {
-      console.log('handleContinue blocked:', { card: !!card, isSubmitting });
+    // Используем ref для синхронной проверки и установки флага
+    if (!card || isSubmittingRef.current) {
+      console.log('handleContinue blocked:', { card: !!card, isSubmitting: isSubmittingRef.current });
       return;
     }
 
-    console.log('handleContinue called:', { cardId: card.id, wasCorrect });
-
-    // Сохраняем ID текущей карточки для проверки
-    const currentCardId = card.id;
-
-    // Устанавливаем isSubmitting синхронно перед асинхронными операциями
+    // Устанавливаем флаг синхронно через ref
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
+
+    console.log('handleContinue called:', { cardId: card.id, wasCorrect, wasCorrectType: typeof wasCorrect });
+
+    // Сохраняем ID текущей карточки и значение wasCorrect до начала асинхронных операций
+    const currentCardId = card.id;
+    const currentWasCorrect = wasCorrect;
 
     // Сразу очищаем карточку и показываем загрузку, чтобы пользователь видел переход
     setCard(null);
@@ -76,7 +80,8 @@ export const StudyPage = () => {
     setStage('definition');
 
     try {
-      await sendAnswer(wasCorrect, currentCardId);
+      console.log('Sending answer:', { answer: currentWasCorrect, cardId: currentCardId });
+      await sendAnswer(currentWasCorrect, currentCardId);
 
       // Небольшая задержка, чтобы дать серверу время обновить расписание
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -111,8 +116,9 @@ export const StudyPage = () => {
     } finally {
       setLoading(false);
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
-  }, [card, isSubmitting, wasCorrect, sendAnswer]);
+  }, [card, wasCorrect, sendAnswer]);
 
   useEffect(() => {
     loadNextCard();
@@ -167,6 +173,7 @@ export const StudyPage = () => {
     } else {
       setShowTranslation(true);
       setStage('incorrect');
+      setWasCorrect(false); // Явно устанавливаем false для неправильного ответа
     }
 
     setInput('');
@@ -174,18 +181,21 @@ export const StudyPage = () => {
 
 
   const handleManualOverride = async (overrideCorrect: boolean) => {
-    if (!card || isSubmitting) return;
+    if (!card || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       await sendAnswer(overrideCorrect, card.id);
       await loadNextCard();
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
   const handleDelete = async () => {
-    if (!card || isSubmitting) return;
+    if (!card || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       await studyApi.deleteCard(card.id);
@@ -194,6 +204,7 @@ export const StudyPage = () => {
       console.error('Failed to delete card:', error);
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
