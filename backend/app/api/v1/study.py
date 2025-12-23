@@ -73,10 +73,10 @@ def answer_card(
 
     if answer.answer:
         match schedule.interval_min:
-            case None | 1:
-                schedule.interval_min = 10
             case 10:
                 schedule.interval_min = 60 * 24
+            case None | 1:
+                schedule.interval_min = 10
             case _:
                 schedule.interval_min = int(schedule.interval_min * schedule.ease)
         schedule.ease *= user.bonus
