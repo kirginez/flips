@@ -6,10 +6,7 @@
 
 import sys
 
-from pwdlib import PasswordHash
-
-# Используем тот же алгоритм, что и в приложении
-password_hash = PasswordHash.recommended()
+from app.core.security import hash_password
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -19,9 +16,7 @@ if __name__ == '__main__':
     else:
         password = sys.argv[1]
 
-    hashed = password_hash.hash(password)
+    hashed = hash_password(password)
     print('\nХэшированный пароль:')
     print(hashed)
     print("\nСкопируйте это значение в поле 'hashed_password' в users.json")
-
-
