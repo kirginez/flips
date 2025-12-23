@@ -90,6 +90,8 @@ export const StudyPage = () => {
 
     if (correct) {
       setShowTranslation(true);
+      // Если дошли до стадии must_type, значит пользователь уже пропустил ответ дважды
+      // Поэтому даже правильный ответ на этой стадии считается неправильным
       if (stage === 'must_type') {
         setStage('final');
         setWasCorrect(false);
