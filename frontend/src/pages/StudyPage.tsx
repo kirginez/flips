@@ -59,18 +59,55 @@ export const StudyPage = () => {
   const handleContinue = useCallback(async () => {
     if (!card || isSubmitting) return;
 
+    // Сохраняем ID текущей карточки для проверки
+    const currentCardId = card.id;
+
     // Устанавливаем isSubmitting синхронно перед асинхронными операциями
     setIsSubmitting(true);
 
+    // Сразу очищаем карточку и показываем загрузку, чтобы пользователь видел переход
+    setCard(null);
+    setLoading(true);
+    setStage('definition');
+
     try {
-      await sendAnswer(wasCorrect, card.id);
-      await loadNextCard();
+      await sendAnswer(wasCorrect, currentCardId);
+
+      // Небольшая задержка, чтобы дать серверу время обновить расписание
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Загружаем следующую карточку
+      // Если сервер вернет ту же карточку, пропускаем её и загружаем еще раз
+      let attempts = 0;
+      let nextCard = null;
+      while (attempts < 5) {
+        nextCard = await studyApi.getNextCard();
+        if (!nextCard || nextCard.id !== currentCardId) {
+          break;
+        }
+        // Если вернулась та же карточка, ждем немного и пробуем снова
+        await new Promise(resolve => setTimeout(resolve, 200));
+        attempts++;
+      }
+
+      if (nextCard && nextCard.id !== currentCardId) {
+        setCard(nextCard);
+        setStage('definition');
+        setInput('');
+        setUserAnswer('');
+        setShowTranslation(false);
+        setWasCorrect(false);
+        setShowDeleteConfirm(false);
+      } else {
+        setCard(null);
+      }
     } catch (error) {
       console.error('Failed to continue:', error);
+    } finally {
+      setLoading(false);
       setIsSubmitting(false);
     }
-    // Не сбрасываем isSubmitting здесь, так как loadNextCard делает это в finally
-  }, [card, isSubmitting, wasCorrect, sendAnswer, loadNextCard]);
+  }, [card, isSubmitting, wasCorrect, sendAnswer]);
 
   useEffect(() => {
     loadNextCard();
