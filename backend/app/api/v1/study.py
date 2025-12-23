@@ -84,7 +84,10 @@ def answer_card(
             case CardStatus.NEW:
                 schedule.status = CardStatus.CRAM
             case CardStatus.CRAM:
-                schedule.status = CardStatus.DUE
+                # Для перехода из CRAM в DUE интервал должен быть больше 10 минут
+                # (т.е. не первый правильный ответ после неправильного)
+                if schedule.interval_min > 10:
+                    schedule.status = CardStatus.DUE
     else:
         schedule.ease *= user.punishment
         schedule.status = CardStatus.CRAM

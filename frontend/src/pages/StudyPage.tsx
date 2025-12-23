@@ -23,6 +23,7 @@ export const StudyPage = () => {
   const [wasCorrect, setWasCorrect] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showIncreaseLimitsModal, setShowIncreaseLimitsModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadNextCard();
@@ -55,6 +56,7 @@ export const StudyPage = () => {
       console.error('Failed to load card:', error);
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -108,24 +110,37 @@ export const StudyPage = () => {
   };
 
   const handleContinue = async () => {
-    if (!card) return;
-    await sendAnswer(wasCorrect);
-    loadNextCard();
+    if (!card || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await sendAnswer(wasCorrect);
+      await loadNextCard();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleManualOverride = async (overrideCorrect: boolean) => {
-    if (!card) return;
-    await sendAnswer(overrideCorrect);
-    loadNextCard();
+    if (!card || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await sendAnswer(overrideCorrect);
+      await loadNextCard();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {
-    if (!card) return;
+    if (!card || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await studyApi.deleteCard(card.id);
-      loadNextCard();
+      await loadNextCard();
     } catch (error) {
       console.error('Failed to delete card:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -304,7 +319,8 @@ export const StudyPage = () => {
               {stage === 'incorrect' && (
                 <button
                   onClick={() => handleManualOverride(true)}
-                  className="w-full mt-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+                  disabled={isSubmitting}
+                  className="w-full mt-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Actually correct
                 </button>
@@ -318,9 +334,10 @@ export const StudyPage = () => {
                 ref={continueButtonRef}
                 onClick={handleContinue}
                 onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continue
+                {isSubmitting ? 'Loading...' : 'Continue'}
               </button>
 
               <button
@@ -341,7 +358,8 @@ export const StudyPage = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={handleDelete}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Yes
                   </button>
