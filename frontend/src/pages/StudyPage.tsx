@@ -55,11 +55,14 @@ export const StudyPage = () => {
 
   // Отправка ответа на сервер
   const sendAnswer = useCallback(async (isCorrect: boolean, cardId: string) => {
-    console.log('Sending answer:', { answer: isCorrect, cardId });
+    const timestamp = new Date().toISOString();
+    console.log(`📤 [${timestamp}] Sending answer:`, { answer: isCorrect, cardId });
     try {
-      await studyApi.answerCard({ card_id: cardId, answer: isCorrect });
+      const result = await studyApi.answerCard({ card_id: cardId, answer: isCorrect });
+      console.log(`✅ [${new Date().toISOString()}] Answer sent successfully`);
+      return result;
     } catch (error) {
-      console.error('Failed to send answer:', error);
+      console.error(`❌ [${new Date().toISOString()}] Failed to send answer:`, error);
       throw error;
     }
   }, []);
@@ -108,19 +111,30 @@ export const StudyPage = () => {
 
   // Продолжить - отправить ответ и загрузить следующую карточку
   const handleContinue = useCallback(async () => {
+    const timestamp = new Date().toISOString();
+    const stackTrace = new Error().stack;
+
+    console.group(`🔵 handleContinue called at ${timestamp}`);
+    console.log('Stack trace:', stackTrace);
+    console.log('Card:', card?.id);
+    console.log('isSubmittingRef.current:', isSubmittingRef.current);
+    console.log('submittingCardIdRef.current:', submittingCardIdRef.current);
+
     // Строгая защита от двойного вызова через ref
     if (!card || isSubmittingRef.current) {
-      console.log('handleContinue: blocked - card:', !!card, 'isSubmitting:', isSubmittingRef.current);
+      console.warn('❌ BLOCKED: card:', !!card, 'isSubmitting:', isSubmittingRef.current);
+      console.groupEnd();
       return;
     }
 
     // Проверяем, не отправляется ли уже запрос для этой карточки
     if (submittingCardIdRef.current === card.id) {
-      console.log('handleContinue: blocked - already submitting for card:', card.id);
+      console.warn('❌ BLOCKED: already submitting for card:', card.id);
+      console.groupEnd();
       return;
     }
 
-    console.log('handleContinue: starting for card:', card.id);
+    console.log('✅ PROCEEDING: starting for card:', card.id);
 
     // Сохраняем ID карточки ДО установки флагов
     const currentCardId = card.id;
@@ -173,9 +187,10 @@ export const StudyPage = () => {
         setCard(null);
       }
     } catch (error) {
-      console.error('Failed to continue:', error);
+      console.error('❌ Failed to continue:', error);
     } finally {
-      console.log('handleContinue: finished');
+      console.log('✅ handleContinue: finished');
+      console.groupEnd();
       setLoading(false);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -420,8 +435,17 @@ export const StudyPage = () => {
                 ref={continueButtonRef}
                 type="button"
                 onClick={(e) => {
+                  const timestamp = new Date().toISOString();
+                  console.log(`🖱️ [${timestamp}] Button clicked`);
+                  console.log('Event:', e);
+                  console.log('Event type:', e.type);
+                  console.log('isSubmitting:', isSubmitting);
+                  console.log('isSubmittingRef.current:', isSubmittingRef.current);
+
                   e.preventDefault();
                   e.stopPropagation();
+
+                  console.log('Calling handleContinue...');
                   handleContinue();
                 }}
                 disabled={isSubmitting}
