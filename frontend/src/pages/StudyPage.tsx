@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CentralContainer } from '../components/CentralContainer';
 import { FloatingTranslateChat } from '../components/FloatingTranslateChat';
@@ -25,19 +25,7 @@ export const StudyPage = () => {
   const [showIncreaseLimitsModal, setShowIncreaseLimitsModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadNextCard();
-  }, []);
-
-  useEffect(() => {
-    if (stage === 'final' && continueButtonRef.current) {
-      continueButtonRef.current.focus();
-    } else if (inputRef.current && stage !== 'final') {
-      inputRef.current.focus();
-    }
-  }, [stage, card]);
-
-  const loadNextCard = async () => {
+  const loadNextCard = useCallback(async () => {
     setLoading(true);
     try {
       const nextCard = await studyApi.getNextCard();
@@ -58,18 +46,67 @@ export const StudyPage = () => {
       setLoading(false);
       setIsSubmitting(false);
     }
-  };
+  }, []);
+
+  const sendAnswer = useCallback(async (isCorrect: boolean, cardId: string) => {
+    try {
+      await studyApi.answerCard({ card_id: cardId, answer: isCorrect });
+    } catch (error) {
+      console.error('Failed to send answer:', error);
+    }
+  }, []);
+
+  const handleContinue = useCallback(async () => {
+    if (!card || isSubmitting) return;
+
+    // Устанавливаем isSubmitting синхронно перед асинхронными операциями
+    setIsSubmitting(true);
+
+    try {
+      await sendAnswer(wasCorrect, card.id);
+      await loadNextCard();
+    } catch (error) {
+      console.error('Failed to continue:', error);
+      setIsSubmitting(false);
+    }
+    // Не сбрасываем isSubmitting здесь, так как loadNextCard делает это в finally
+  }, [card, isSubmitting, wasCorrect, sendAnswer, loadNextCard]);
+
+  useEffect(() => {
+    loadNextCard();
+  }, [loadNextCard]);
+
+  useEffect(() => {
+    if (stage === 'final' && continueButtonRef.current) {
+      continueButtonRef.current.focus();
+    } else if (inputRef.current && stage !== 'final') {
+      inputRef.current.focus();
+    }
+  }, [stage, card]);
+
+  // Обработка Enter на финальной стадии
+  useEffect(() => {
+    if (stage !== 'final' || isSubmitting) return;
+
+    const handleEnterKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Enter' && !isSubmitting) {
+        e.preventDefault();
+        handleContinue();
+      }
+    };
+
+    window.addEventListener('keydown', handleEnterKey);
+    return () => {
+      window.removeEventListener('keydown', handleEnterKey);
+    };
+  }, [stage, isSubmitting, handleContinue]);
+
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     handleAnswer();
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (stage === 'final' && e.key === 'Enter') {
-      handleContinue();
-    }
-  };
 
   const handleAnswer = () => {
     if (!card) return;
@@ -109,22 +146,12 @@ export const StudyPage = () => {
     setInput('');
   };
 
-  const handleContinue = async () => {
-    if (!card || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await sendAnswer(wasCorrect);
-      await loadNextCard();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleManualOverride = async (overrideCorrect: boolean) => {
     if (!card || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await sendAnswer(overrideCorrect);
+      await sendAnswer(overrideCorrect, card.id);
       await loadNextCard();
     } finally {
       setIsSubmitting(false);
@@ -144,14 +171,6 @@ export const StudyPage = () => {
     }
   };
 
-  const sendAnswer = async (isCorrect: boolean) => {
-    if (!card) return;
-    try {
-      await studyApi.answerCard({ card_id: card.id, answer: isCorrect });
-    } catch (error) {
-      console.error('Failed to send answer:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -299,7 +318,6 @@ export const StudyPage = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' || e.keyCode === 13) {
                       e.preventDefault();
@@ -332,8 +350,10 @@ export const StudyPage = () => {
             <div className="mt-2 space-y-1">
               <button
                 ref={continueButtonRef}
-                onClick={handleContinue}
-                onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleContinue();
+                }}
                 disabled={isSubmitting}
                 className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
