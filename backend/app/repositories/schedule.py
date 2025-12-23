@@ -1,6 +1,6 @@
 from app.models.entities import CardStatus, Limits, Schedule, ScheduleAmount
 from app.models.user import User
-from sqlmodel import Date, Session, func, select
+from sqlmodel import Session, func, select
 
 
 class ScheduleRepo:
@@ -26,10 +26,12 @@ class ScheduleRepo:
         return self.db.exec(stmt).first()
 
     def get_due_amount(self, username: str) -> int:
+        # Используем func.date() для извлечения даты из datetime и сравнения с текущей датой
+        # func.date('now') возвращает текущую дату в SQLite
         stmt = select(func.count(Schedule.id)).where(
             Schedule.username == username,
             Schedule.status == CardStatus.DUE,
-            func.cast(Schedule.due, Date) <= func.current_date(),
+            func.date(Schedule.due) <= func.date('now'),
         )
         return self.db.exec(stmt).first()
 
@@ -65,12 +67,14 @@ class ScheduleRepo:
         return self.db.exec(stmt).first() or None
 
     def get_due(self, username: str) -> Schedule | None:
+        # Используем func.date() для извлечения даты из datetime и сравнения с текущей датой
+        # func.date('now') возвращает текущую дату в SQLite
         stmt = (
             select(Schedule)
             .where(
                 Schedule.username == username,
                 Schedule.status == CardStatus.DUE,
-                func.cast(Schedule.due, Date) <= func.current_date(),
+                func.date(Schedule.due) <= func.date('now'),
             )
             .order_by(func.random())
         )
