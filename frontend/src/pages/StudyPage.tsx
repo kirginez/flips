@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CentralContainer } from '../components/CentralContainer';
 import { FloatingTranslateChat } from '../components/FloatingTranslateChat';
@@ -13,8 +13,10 @@ export const StudyPage = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const isSubmittingRef = useRef(false);
   const submittingCardIdRef = useRef<string | null>(null);
+  const isProcessingAnswerRef = useRef(false);
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,7 @@ export const StudyPage = () => {
       setIsSubmitting(false);
       isSubmittingRef.current = false;
       submittingCardIdRef.current = null;
+      isProcessingAnswerRef.current = false;
     }
   }, []);
 
@@ -70,6 +73,14 @@ export const StudyPage = () => {
   // Обработка ответа пользователя
   const handleAnswer = () => {
     if (!card) return;
+
+    // Защита от повторной обработки
+    if (isSubmitting || isSubmittingRef.current || isProcessingAnswerRef.current || stage === 'final') {
+      return;
+    }
+
+    // Устанавливаем флаг обработки
+    isProcessingAnswerRef.current = true;
 
     const trimmedInput = input.trim();
 
@@ -107,6 +118,11 @@ export const StudyPage = () => {
     }
 
     setInput('');
+
+    // Сбрасываем флаг обработки после небольшой задержки
+    setTimeout(() => {
+      isProcessingAnswerRef.current = false;
+    }, 100);
   };
 
   // Продолжить - отправить ответ и загрузить следующую карточку
@@ -232,10 +248,16 @@ export const StudyPage = () => {
     }
   }, [card, loadNextCard]);
 
-  // Обработка отправки формы
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    handleAnswer();
+  // Обработка нажатия Enter - кликаем на кнопку
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      // Кликаем на кнопку вместо обработки Enter напрямую
+      if (submitButtonRef.current) {
+        submitButtonRef.current.click();
+      }
+    }
   };
 
   // Загрузка первой карточки при монтировании
@@ -243,10 +265,13 @@ export const StudyPage = () => {
     loadNextCard();
   }, [loadNextCard]);
 
-  // Автофокус на инпут или кнопку Continue
+  // Автофокус на кнопку submit или кнопку Continue
   useEffect(() => {
     if (stage === 'final' && continueButtonRef.current) {
       continueButtonRef.current.focus();
+    } else if (submitButtonRef.current && stage !== 'final') {
+      // Фокус на кнопку submit, чтобы Enter нажимал на неё
+      submitButtonRef.current.focus();
     } else if (inputRef.current && stage !== 'final') {
       inputRef.current.focus();
     }
@@ -398,12 +423,13 @@ export const StudyPage = () => {
           {/* Форма ввода (не на финальной стадии) */}
           {stage !== 'final' && (
             <>
-              <form onSubmit={handleSubmit} className="mt-2">
+              <div className="mt-2">
                 <input
                   ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Type word..."
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -413,7 +439,21 @@ export const StudyPage = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isSubmitting}
                 />
-              </form>
+                <button
+                  ref={submitButtonRef}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isSubmitting && !isSubmittingRef.current && !isProcessingAnswerRef.current) {
+                      handleAnswer();
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className="sr-only"
+                  aria-label="Submit answer"
+                />
+              </div>
 
               {/* Кнопка "Actually correct" при неправильном ответе */}
               {stage === 'incorrect' && (
