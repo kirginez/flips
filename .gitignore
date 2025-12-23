@@ -51,8 +51,8 @@ lerna-debug.log*
 # User data
 backend/users.json
 
-# Build outputs
-frontend/dist/
+# Build outputs (dist теперь коммитится для деплоя)
+# frontend/dist/  # Раскомментируйте, если не хотите коммитить dist
 frontend/dist-ssr/
 
 # Logs

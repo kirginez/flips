@@ -54,13 +54,31 @@ app.include_router(api_router, prefix='/api')
 frontend_dist = Path(__file__).parent.parent / 'frontend' / 'dist'
 
 if frontend_dist.exists():
-    # Раздаём статические файлы (JS, CSS, images)
+    # Раздаём статические файлы из папки assets
     app.mount('/assets', StaticFiles(directory=str(frontend_dist / 'assets')), name='assets')
 
-    # Для всех остальных путей отдаём index.html (для React Router)
+    # Для всех остальных путей отдаём index.html или статические файлы
     @app.get('/{full_path:path}')
-    async def serve_frontend(full_path: str):
-        # Если это не API запрос и не файл, отдаём index.html
+    async def serve_frontend(full_path: str, request: Request):
+        # Пропускаем API запросы (они уже обработаны выше)
+        if full_path.startswith('api/'):
+            return JSONResponse(status_code=404, content={'detail': 'Not found'})
+
+        # Проверяем, существует ли запрашиваемый файл в dist
+        requested_file = frontend_dist / full_path.lstrip('/')
+
+        # Проверка безопасности: файл должен быть внутри frontend_dist
+        try:
+            requested_file.resolve().relative_to(frontend_dist.resolve())
+        except ValueError:
+            # Путь выходит за пределы frontend_dist - возвращаем 404
+            return JSONResponse(status_code=404, content={'detail': 'Not found'})
+
+        # Если запрашивается существующий статический файл, отдаём его
+        if requested_file.exists() and requested_file.is_file():
+            return FileResponse(str(requested_file))
+
+        # Для всех остальных путей (включая маршруты React Router) отдаём index.html
         index_file = frontend_dist / 'index.html'
         if index_file.exists():
             return FileResponse(str(index_file))
