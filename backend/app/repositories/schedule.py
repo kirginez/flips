@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.models.entities import CardStatus, Limits, Schedule, ScheduleAmount
 from app.models.user import User
 from sqlmodel import Session, func, select
@@ -42,7 +44,9 @@ class ScheduleRepo:
         return ScheduleAmount(new=new, cram=cram, due=due)
 
     def get_limits(self, user: User) -> Limits:
-        stmt = select(Limits).where(Limits.username == user.username, func.date(Limits.created_at) == func.date('now'))
+        # В SQLite поле DATE хранится как строка 'YYYY-MM-DD', сравниваем напрямую
+        today = date.today()
+        stmt = select(Limits).where(Limits.username == user.username, Limits.created_at == today)
         if not (result := self.db.exec(stmt).first()):
             limits = Limits(username=user.username, new_limit=user.new_limit, due_limit=user.due_limit)
             self.db.add(limits)
