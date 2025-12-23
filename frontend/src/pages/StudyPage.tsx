@@ -16,7 +16,6 @@ export const StudyPage = () => {
   const submitButtonRef = useRef<HTMLButtonElement>(null);
   const isSubmittingRef = useRef(false);
   const submittingCardIdRef = useRef<string | null>(null);
-  const isProcessingAnswerRef = useRef(false);
 
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +51,6 @@ export const StudyPage = () => {
       setIsSubmitting(false);
       isSubmittingRef.current = false;
       submittingCardIdRef.current = null;
-      isProcessingAnswerRef.current = false;
     }
   }, []);
 
@@ -75,12 +73,9 @@ export const StudyPage = () => {
     if (!card) return;
 
     // Защита от повторной обработки
-    if (isSubmitting || isSubmittingRef.current || isProcessingAnswerRef.current || stage === 'final') {
+    if (isSubmitting || isSubmittingRef.current || stage === 'final') {
       return;
     }
-
-    // Устанавливаем флаг обработки
-    isProcessingAnswerRef.current = true;
 
     const trimmedInput = input.trim();
 
@@ -118,11 +113,6 @@ export const StudyPage = () => {
     }
 
     setInput('');
-
-    // Сбрасываем флаг обработки после небольшой задержки
-    setTimeout(() => {
-      isProcessingAnswerRef.current = false;
-    }, 100);
   };
 
   // Продолжить - отправить ответ и загрузить следующую карточку
@@ -248,30 +238,16 @@ export const StudyPage = () => {
     }
   }, [card, loadNextCard]);
 
-  // Обработка нажатия Enter - кликаем на кнопку
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      e.stopPropagation();
-      // Кликаем на кнопку вместо обработки Enter напрямую
-      if (submitButtonRef.current) {
-        submitButtonRef.current.click();
-      }
-    }
-  };
 
   // Загрузка первой карточки при монтировании
   useEffect(() => {
     loadNextCard();
   }, [loadNextCard]);
 
-  // Автофокус на кнопку submit или кнопку Continue
+  // Автофокус на инпут или кнопку Continue
   useEffect(() => {
     if (stage === 'final' && continueButtonRef.current) {
       continueButtonRef.current.focus();
-    } else if (submitButtonRef.current && stage !== 'final') {
-      // Фокус на кнопку submit, чтобы Enter нажимал на неё
-      submitButtonRef.current.focus();
     } else if (inputRef.current && stage !== 'final') {
       inputRef.current.focus();
     }
@@ -429,12 +405,10 @@ export const StudyPage = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   placeholder="Type word..."
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck="false"
-                  enterKeyHint="go"
                   inputMode="text"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isSubmitting}
@@ -445,14 +419,15 @@ export const StudyPage = () => {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!isSubmitting && !isSubmittingRef.current && !isProcessingAnswerRef.current) {
+                    if (!isSubmitting && !isSubmittingRef.current) {
                       handleAnswer();
                     }
                   }}
                   disabled={isSubmitting}
-                  className="sr-only"
-                  aria-label="Submit answer"
-                />
+                  className="w-full mt-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Submit
+                </button>
               </div>
 
               {/* Кнопка "Actually correct" при неправильном ответе */}
