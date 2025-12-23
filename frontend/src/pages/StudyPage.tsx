@@ -424,14 +424,6 @@ export const StudyPage = () => {
                   e.stopPropagation();
                   handleContinue();
                 }}
-                onKeyDown={(e) => {
-                  // Предотвращаем стандартное поведение Enter на кнопке
-                  // onClick уже обработает клик/Enter
-                  if (e.key === 'Enter' || e.keyCode === 13) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }
-                }}
                 disabled={isSubmitting}
                 className="w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
