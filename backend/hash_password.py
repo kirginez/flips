@@ -23,3 +23,5 @@ if __name__ == '__main__':
     print('\nХэшированный пароль:')
     print(hashed)
     print("\nСкопируйте это значение в поле 'hashed_password' в users.json")
+
+
