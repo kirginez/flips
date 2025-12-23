@@ -1,23 +1,36 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import jwt
 from app.core.config import settings
 from fastapi import HTTPException
-from passlib.context import CryptContext
 
 logger = logging.getLogger(__name__)
 
-# Используем bcrypt для хеширования паролей (легче чем argon2)
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    """Хэширует пароль используя bcrypt."""
+    # Преобразуем пароль в bytes, если он строка
+    password_bytes = password.encode('utf-8')
+    # Генерируем соль и хэшируем пароль
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Возвращаем как строку
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """Проверяет пароль против хэша."""
+    try:
+        # Преобразуем в bytes
+        password_bytes = plain_password.encode('utf-8')
+        hashed_bytes = hashed_password.encode('utf-8')
+        # Проверяем пароль
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except Exception as e:
+        logger.error(f'Ошибка при проверке пароля: {e}')
+        return False
 
 
 def create_access_token(username: str) -> str:
