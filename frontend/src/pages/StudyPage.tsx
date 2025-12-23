@@ -57,7 +57,12 @@ export const StudyPage = () => {
   }, []);
 
   const handleContinue = useCallback(async () => {
-    if (!card || isSubmitting) return;
+    if (!card || isSubmitting) {
+      console.log('handleContinue blocked:', { card: !!card, isSubmitting });
+      return;
+    }
+
+    console.log('handleContinue called:', { cardId: card.id, wasCorrect });
 
     // Сохраняем ID текущей карточки для проверки
     const currentCardId = card.id;
@@ -121,22 +126,6 @@ export const StudyPage = () => {
     }
   }, [stage, card]);
 
-  // Обработка Enter на финальной стадии
-  useEffect(() => {
-    if (stage !== 'final' || isSubmitting) return;
-
-    const handleEnterKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Enter' && !isSubmitting) {
-        e.preventDefault();
-        handleContinue();
-      }
-    };
-
-    window.addEventListener('keydown', handleEnterKey);
-    return () => {
-      window.removeEventListener('keydown', handleEnterKey);
-    };
-  }, [stage, isSubmitting, handleContinue]);
 
 
   const handleSubmit = (e: FormEvent) => {
