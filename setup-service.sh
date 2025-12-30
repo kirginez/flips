@@ -51,6 +51,22 @@ if ! grep -q "^User=" "$SYSTEMD_FILE"; then
     sudo sed -i "/^\[Service\]/a User=$CURRENT_USER" "$SYSTEMD_FILE"
 fi
 
+# Проверяем SSL настройки из .env
+ENV_FILE="$SCRIPT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    if grep -q "^SSL_ENABLED=true" "$ENV_FILE"; then
+        SSL_CERT=$(grep "^SSL_CERT_PATH=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        SSL_KEY=$(grep "^SSL_KEY_PATH=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        if [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ]; then
+            echo "   Обнаружены SSL настройки, обновление ExecStart..."
+            CURRENT_EXEC=$(grep "^ExecStart=" "$SYSTEMD_FILE" | cut -d'=' -f2-)
+            NEW_EXEC="$CURRENT_EXEC --ssl-certfile $SSL_CERT --ssl-keyfile $SSL_KEY"
+            sudo sed -i "s|^ExecStart=.*|ExecStart=$NEW_EXEC|" "$SYSTEMD_FILE"
+            echo "   ✓ SSL параметры добавлены"
+        fi
+    fi
+fi
+
 echo "   ✓ Файл создан: $SYSTEMD_FILE"
 echo ""
 

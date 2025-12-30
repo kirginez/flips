@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     SOURCE_LANGUAGE: str = 'en'
     TARGET_LANGUAGE: str = 'ru'
 
+    SSL_ENABLED: bool = False
+    SSL_CERT_PATH: str = ''
+    SSL_KEY_PATH: str = ''
+
     model_config = SettingsConfigDict(env_file=(PROJECT_ROOT / '.env', PROJECT_ROOT / '.env.template'))
 
 

@@ -83,6 +83,31 @@ else
     echo ""
 fi
 
+# 5. Проверка SSL сертификатов
+echo "5. Проверка SSL сертификатов..."
+if [ -f "$SCRIPT_DIR/.env" ] && grep -q "^SSL_ENABLED=true" "$SCRIPT_DIR/.env"; then
+    SSL_CERT=$(grep "^SSL_CERT_PATH=" "$SCRIPT_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    SSL_KEY=$(grep "^SSL_KEY_PATH=" "$SCRIPT_DIR/.env" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    if [ -n "$SSL_CERT" ] && [ -f "$SSL_CERT" ] && [ -n "$SSL_KEY" ] && [ -f "$SSL_KEY" ]; then
+        echo "   ✓ SSL сертификаты найдены"
+        echo "   Cert: $SSL_CERT"
+        echo "   Key:  $SSL_KEY"
+    else
+        echo "   ⚠️  SSL включен, но сертификаты не найдены!"
+        echo "   Запустите: ./generate-ssl-cert.sh"
+    fi
+    echo ""
+else
+    echo "   ℹ️  SSL не настроен (по умолчанию HTTP)"
+    echo "   Для включения HTTPS:"
+    echo "   1. Запустите: ./generate-ssl-cert.sh"
+    echo "   2. Добавьте в .env:"
+    echo "      SSL_ENABLED=true"
+    echo "      SSL_CERT_PATH=/path/to/cert.pem"
+    echo "      SSL_KEY_PATH=/path/to/key.pem"
+    echo ""
+fi
+
 echo "=========================================="
 echo "  ✓ Развёртывание завершено!"
 echo "=========================================="

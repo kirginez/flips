@@ -7,7 +7,9 @@ Type=simple
 # Пути будут автоматически заменены скриптом setup-service.sh
 WorkingDirectory=/path/to/flips/backend
 Environment="PATH=/path/to/flips/backend/.venv/bin"
+EnvironmentFile=/path/to/flips/.env
 # Оптимизация для малой памяти: 1 воркер, без стандартных расширений
+# SSL параметры будут добавлены автоматически setup-service.sh если SSL_ENABLED=true
 ExecStart=/path/to/flips/backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8080 --workers 1 --limit-concurrency 100
 Restart=always
 RestartSec=10

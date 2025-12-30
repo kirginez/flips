@@ -3,6 +3,7 @@ from pathlib import Path
 
 import uvicorn
 from app.api import router as api_router
+from app.core.config import settings
 from app.core.database import init_db
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -95,4 +96,16 @@ else:
 
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8080)
+    ssl_kwargs = {}
+    if settings.SSL_ENABLED:
+        cert_path = Path(settings.SSL_CERT_PATH)
+        key_path = Path(settings.SSL_KEY_PATH)
+        if not cert_path.exists() or not key_path.exists():
+            logger.error(f'SSL сертификаты не найдены: cert={cert_path}, key={key_path}')
+            raise FileNotFoundError('SSL сертификаты не найдены')
+        ssl_kwargs = {
+            'ssl_certfile': str(cert_path),
+            'ssl_keyfile': str(key_path),
+        }
+        logger.info(f'HTTPS включен: cert={cert_path}, key={key_path}')
+    uvicorn.run(app, host='0.0.0.0', port=8080, **ssl_kwargs)
