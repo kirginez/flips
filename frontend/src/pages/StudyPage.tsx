@@ -103,9 +103,7 @@ export const StudyPage = () => {
 
     if (correct) {
       setShowTranslation(true);
-      // Если дошли до стадии must_type, значит пользователь уже пропустил ответ дважды
-      // Поэтому даже правильный ответ на этой стадии считается неправильным
-      if (stage === 'must_type') {
+      if (stage === 'must_type' || stage === 'incorrect') {
         setStage('final');
         setWasCorrect(false);
       } else {
@@ -123,70 +121,33 @@ export const StudyPage = () => {
 
   // Продолжить - отправить ответ и загрузить следующую карточку
   const handleContinue = useCallback(async () => {
-    const timestamp = new Date().toISOString();
-    const stackTrace = new Error().stack;
-
-    console.group(`🔵 handleContinue called at ${timestamp}`);
-    console.log('Stack trace:', stackTrace);
-    console.log('Card:', card?.id);
-    console.log('isSubmittingRef.current:', isSubmittingRef.current);
-    console.log('submittingCardIdRef.current:', submittingCardIdRef.current);
-
-    // Строгая защита от двойного вызова через ref
     if (!card || isSubmittingRef.current) {
-      console.warn('❌ BLOCKED: card:', !!card, 'isSubmitting:', isSubmittingRef.current);
-      console.groupEnd();
       return;
     }
 
-    // Проверяем, не отправляется ли уже запрос для этой карточки
     if (submittingCardIdRef.current === card.id) {
-      console.warn('❌ BLOCKED: already submitting for card:', card.id);
-      console.groupEnd();
       return;
     }
 
-    console.log('✅ PROCEEDING: starting for card:', card.id);
-
-    // Сохраняем ID карточки ДО установки флагов
     const currentCardId = card.id;
     const currentWasCorrect = wasCorrect;
 
-    // Устанавливаем флаги синхронно ПЕРЕД любыми другими операциями
     isSubmittingRef.current = true;
     submittingCardIdRef.current = currentCardId;
     setIsSubmitting(true);
 
-    // Очищаем карточку для показа загрузки
     setCard(null);
     setLoading(true);
     setStage('definition');
 
     try {
-      // Отправляем ответ
-      console.log('handleContinue: sending answer for card:', currentCardId);
       await sendAnswer(currentWasCorrect, currentCardId);
 
-      // Небольшая задержка для обновления расписания на сервере
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Загружаем следующую карточку
-      // Если вернулась та же карточка, пробуем еще раз
-      let attempts = 0;
-      let nextCard = null;
-      while (attempts < 5) {
-        console.log('handleContinue: loading next card, attempt:', attempts + 1);
-        nextCard = await studyApi.getNextCard();
-        if (!nextCard || nextCard.id !== currentCardId) {
-          break;
-        }
-        console.log('handleContinue: same card returned, retrying...');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        attempts++;
-      }
+      const nextCard = await studyApi.getNextCard();
 
-      if (nextCard && nextCard.id !== currentCardId) {
-        console.log('handleContinue: loaded new card:', nextCard.id);
+      if (nextCard) {
         setCard(nextCard);
         setStage('definition');
         setInput('');
@@ -195,14 +156,11 @@ export const StudyPage = () => {
         setWasCorrect(false);
         setShowDeleteConfirm(false);
       } else {
-        console.log('handleContinue: no more cards');
         setCard(null);
       }
     } catch (error) {
-      console.error('❌ Failed to continue:', error);
+      console.error('Failed to continue:', error);
     } finally {
-      console.log('✅ handleContinue: finished');
-      console.groupEnd();
       setLoading(false);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
