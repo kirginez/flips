@@ -58,3 +58,30 @@ export interface CharComparison {
   isCorrect: boolean;
 }
 
+export interface StatsOverview {
+  total: number;
+  new: number;
+  cram: number;
+  due: number;
+}
+
+export interface HardestCard {
+  card: Card;
+  ease: number;
+}
+
+export interface DueChartData {
+  date: string;
+  count: number;
+}
+
+export interface ActivityData {
+  date: string;
+  count: number;
+}
+
+export interface TodayStats {
+  count: number;
+  time_spent: string | null;
+}
+

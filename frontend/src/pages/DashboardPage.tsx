@@ -84,8 +84,8 @@ export const DashboardPage = () => {
             </button>
 
             <button
-              disabled
-              className="px-4 py-3 bg-gray-200 text-gray-500 rounded-md cursor-not-allowed"
+              onClick={() => navigate('/stats')}
+              className="px-4 py-3 bg-gray-700 text-white rounded-md hover:bg-gray-800 transition-colors"
             >
               Stats
             </button>

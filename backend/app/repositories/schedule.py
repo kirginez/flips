@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
-from app.models.entities import CardStatus, Limits, Schedule, ScheduleAmount
+from app.models.entities import Card, CardStatus, Limits, Schedule, ScheduleAmount
 from app.models.user import User
 from sqlmodel import Session, func, select
 
@@ -116,3 +116,51 @@ class ScheduleRepo:
     def has_other_users(self, card_id: str, exclude_username: str) -> bool:
         stmt = select(Schedule).where(Schedule.card_id == card_id, Schedule.username != exclude_username)
         return self.db.exec(stmt).first() is not None
+
+    def get_hardest_cards(self, username: str, limit: int = 10) -> list[dict]:
+        stmt = (
+            select(Schedule, Card)
+            .join(Card, Schedule.card_id == Card.id)
+            .where(Schedule.username == username)
+            .order_by(Schedule.ease.asc())
+            .limit(limit)
+        )
+        results = self.db.exec(stmt).all()
+        return [
+            {
+                'card': {
+                    'id': card.id,
+                    'word': card.word,
+                    'translation': card.translation,
+                    'definition': card.definition,
+                    'meta': card.meta,
+                    'pronunciation': card.pronunciation,
+                    'example': card.example,
+                    'example_translation': card.example_translation,
+                    'created_at': card.created_at.isoformat() if card.created_at else None,
+                },
+                'ease': schedule.ease,
+            }
+            for schedule, card in results
+        ]
+
+    def get_due_chart(self, username: str, days: int = 30) -> list[dict]:
+        today = date.today()
+        end_date = today + timedelta(days=days)
+        stmt = (
+            select(
+                func.date(Schedule.due).label('day'),
+                func.count(Schedule.id).label('count'),
+            )
+            .where(
+                Schedule.username == username,
+                Schedule.status == CardStatus.DUE,
+                Schedule.due.isnot(None),
+                func.date(Schedule.due) >= today,
+                func.date(Schedule.due) <= end_date,
+            )
+            .group_by(func.date(Schedule.due))
+            .order_by(func.date(Schedule.due))
+        )
+        results = self.db.exec(stmt).all()
+        return [{'date': str(row.day), 'count': row.count} for row in results]

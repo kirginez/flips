@@ -1,5 +1,15 @@
 import { apiClient } from './client';
-import type { TokenResponse, Card, ScheduleAmount, Answer } from '../types';
+import type {
+  TokenResponse,
+  Card,
+  ScheduleAmount,
+  Answer,
+  StatsOverview,
+  HardestCard,
+  DueChartData,
+  ActivityData,
+  TodayStats,
+} from '../types';
 
 export const authApi = {
   login: async (username: string, password: string): Promise<TokenResponse> => {
@@ -44,6 +54,33 @@ export const cardsApi = {
   createCards: async (word: string): Promise<Set<string>> => {
     const response = await apiClient.post<string[]>(`/cards/create?word=${encodeURIComponent(word)}`);
     return new Set(response.data);
+  },
+};
+
+export const statsApi = {
+  getOverview: async (): Promise<StatsOverview> => {
+    const response = await apiClient.get<StatsOverview>('/stats/overview');
+    return response.data;
+  },
+
+  getHardest: async (limit: number = 10): Promise<HardestCard[]> => {
+    const response = await apiClient.get<HardestCard[]>(`/stats/hardest?limit=${limit}`);
+    return response.data;
+  },
+
+  getDueChart: async (days: number = 30): Promise<DueChartData[]> => {
+    const response = await apiClient.get<DueChartData[]>(`/stats/due-chart?days=${days}`);
+    return response.data;
+  },
+
+  getActivity: async (days: number = 365): Promise<ActivityData[]> => {
+    const response = await apiClient.get<ActivityData[]>(`/stats/activity?days=${days}`);
+    return response.data;
+  },
+
+  getToday: async (): Promise<TodayStats> => {
+    const response = await apiClient.get<TodayStats>('/stats/today');
+    return response.data;
   },
 };
 
