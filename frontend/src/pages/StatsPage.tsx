@@ -141,7 +141,7 @@ export const StatsPage = () => {
               <div>
                 <h3 className="text-xl font-semibold mb-4">Hardest Cards</h3>
                 <div className="space-y-2">
-                  {hardestCards.map((item, index) => (
+                  {hardestCards.map((item) => (
                     <div key={item.card.id} className="bg-gray-50 p-4 rounded-lg">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
